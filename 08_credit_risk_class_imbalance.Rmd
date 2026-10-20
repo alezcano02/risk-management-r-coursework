@@ -1,0 +1,134 @@
+---
+title: "17-09-2024"
+author: "AL"
+date: "2024-09-17"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read the data, credit data
+
+```{r}
+# data files live in data/ (run from the repository root)
+df <-read.csv('CreditRisk_RiskSimulator_moodle_R_csv_CL.csv',sep=';',dec='.')
+head(df)
+```
+
+Let's use caret to partition the data 70/30
+```{r}
+library(caret)
+set.seed(123)
+d <- createDataPartition(df$Incumplimiento,p=0.7,list=FALSE)
+train <- df[d,]
+test <- df[-d,]
+table(train$Incumplimiento)
+
+
+```
+```{r}
+if (!require("ROSE")) install.packages("ROSE"); library(ROSE)
+
+#oversampling and undersampling
+over <- ovun.sample(Incumplimiento~.,data=train,N=nrow(train),p=0.5,seed=123,method="both")$data
+table(over$Incumplimiento)
+
+```
+```{r}
+#over sampling only 
+over2 <- ovun.sample(Incumplimiento~.,data=train,p=0.5,seed=123,method="over")$data
+table(over2$Incumplimiento)
+```
+```{r}
+#Under sampling 
+over3 <- ovun.sample(Incumplimiento~.,data=train,p=0.5,seed=123,method="under")$data
+table(over3$Incumplimiento)
+```
+```{r}
+##Creating dummy variables with caret 
+library(tidyverse)
+glimpse(df)
+```
+```{r}
+summary(train$Edad)
+```
+```{r}
+toy_df <- as.data.frame(train$Edad)
+colnames(toy_df) <- 'Edad'
+head(toy_df)
+```
+```{r}
+##Create ranges
+toy_df=toy_df%>%
+  mutate(
+    Grupo_edades=case_when(
+      Edad<=25~"u25",
+      Edad>25&Edad<=35~"o25u35",
+      Edad>35&Edad<=45~"o35u45",
+      Edad>45&Edad<=55~"o45u55",
+      Edad>55~"o55"
+    )
+  )
+
+head(toy_df)
+```
+
+```{r}
+#encoding the "grupo:edades" variable / column
+dmy <- dummyVars("~Grupo_edades",data=toy_df)
+trsf <- data.frame(predict(dmy,newdata = toy_df))
+head(trsf)
+```
+However, we should take into account that the ranges of the Age variables are ordered 
+
+```{r}
+toy_df2=toy_df%>%
+  mutate(
+    Grupo_edades=case_when(
+      Edad<=25~"u25",
+      Edad>25&Edad<=35~"o25u35",
+      Edad>35&Edad<=45~"o35u45",
+      Edad>45&Edad<=55~"o45u55",
+      Edad>55~"o55"
+    ),
+    #convert to a factor
+    Grupo_edades=factor(
+      Grupo_edades,
+      order=TRUE,
+      level=c("u25","o25u35","o35u45","o45u55","o55")
+    )
+  )
+str(toy_df2)
+levels(toy_df2$Grupo_edades)
+head(toy_df2)
+```
+
+
+
+
+### Balancing a dataset
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

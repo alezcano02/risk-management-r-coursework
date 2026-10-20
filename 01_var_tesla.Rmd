@@ -1,0 +1,73 @@
+---
+title: "VaR H"
+author: "AL"
+date: "2024-10-25"
+output:
+  word_document: default
+  pdf_document: default
+---
+Define variables
+```{r}
+if(!require('quantmod')) install.packages('quantmod');library(quantmod)
+ticker <- 'TSLA'
+stockEnv=new.env()
+startdate=Sys.Date()-400
+enddate=Sys.Date()
+```
+
+Get data
+```{r}
+getSymbols(Symbols=ticker,
+           env=stockEnv,
+           from=startdate,
+           to=enddate
+           )
+data <- stockEnv$TSLA
+head(data)
+str(data)
+
+```
+Select the data and plot
+```{r}
+data <- stockEnv$TSLA$TSLA.Close
+library(ggplot2)
+ggplot(fortify(data),aes(x=Index,y=TSLA.Close))+geom_line()+labs(x='Date',y='TSLA Prices',title='TSLA price development')
+```
+#1) Interpretation of the price
+The prices of Tesla during the last 400 days do not look stationary, however they seem to move around a mean of approximately 220 dollars. In the last days there was a big growth that took the price close to the maximum it had at the end of last year. We can see that the volatility of the stock was high during the period and that maybe many people missed the profit of the last days because of the risk of not taking enough risk. People who, for example, bought the stock at the beginning of the month and sold it two weeks ago after the robotaxi announcement made the mistake of selling when the stock was low and missed all the recovery. Because of all these factors, we can say the stock is risky.
+
+#2 Determinar VaR 97%
+
+We define log returns and statistics to calculate the VaR
+```{r}
+logret <- na.omit(diff(log(data$TSLA.Close),lag=1))
+head(logret)
+
+statistics <- c(length(data$TSLA.Close[-1]),
+               mean(data$TSLA.Close[-1]),
+               mean(logret),
+               sd(logret),
+               255*mean(logret))
+
+names(statistics) <- c("Total Days",
+                       "Average Price",
+                       "Daily Change",
+                       "Daily Volatility",
+                       "Annualized returns")
+volatility <- statistics[4]
+dayret <- statistics[3]
+```
+
+We calculate the VaR
+```{r}
+quant <- 4000#stocks
+value_portf <- quant*tail(data$TSLA.Close,1)
+alpha <- 0.03
+confidence <- 1-alpha
+# We use a holding period of 1 day, which is the usual one
+holding <- 1 #1 day
+h_var <- abs(quantile(logret,alpha)*value_portf)
+h_var
+```
+#3) Explanation of the VaR
+The VaR is the 'maximum' value at risk at a specific confidence level (in this case 97%): it estimates the maximum loss that the portfolio could have in a specific time. Among its 'pros' we can mention that it is simple to use, it is practical because it lets us compare the risk of different stocks or portfolios, and it is a useful tool to know the maximum loss from simple statistics. On the other hand, among its 'cons', it does not capture the 'tails' of the distribution (the extreme events) and it has subjective parameters like the time we 'hold' the asset or the confidence level. Also, in this case, it underestimates many relevant factors because it uses past conditions to represent the future conditions of the market.
